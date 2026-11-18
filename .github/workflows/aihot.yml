@@ -2,8 +2,9 @@ name: AIHOT 热点推送钉钉
 
 on:
   schedule:
-    # GitHub 用 UTC 时间。0 35 * * * = 北京时间每天 08:35
-    - cron: "35 0 * * *"
+    # GitHub 用 UTC 时间，北京时间 = UTC + 8
+    - cron: "35 0 * * *"   # 北京时间每天 08:35
+    - cron: "0 11 * * *"   # 北京时间每天 19:00
   workflow_dispatch:
 
 jobs:
@@ -14,6 +15,7 @@ jobs:
       - name: 获取 AIHOT 内容并推送钉钉
         env:
           DINGTALK_WEBHOOK_URL: ${{ secrets.DINGTALK_WEBHOOK_URL }}
+          SCHEDULE: ${{ github.event.schedule }}
         run: |
           python3 - <<'PY'
           import os, json, urllib.request
@@ -52,7 +54,11 @@ jobs:
           except Exception as e:
               print("热点获取失败:", e)
 
-          # ---------- 2. 今日日报摘要 ----------
+          # ---------- 2. 今日日报摘要（晚上那次跳过，只推热点）----------
+          import os as _os
+          if _os.environ.get("SCHEDULE", "").strip() == "0 11 * * *":
+              print("晚上场次：按要求只推热点，跳过日报")
+              raise SystemExit(0)
           try:
               daily = get_json("https://aihot.news/api/v1/dailies/latest")
               rep = daily.get("report", {})
